@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Logo } from "./Logo";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,7 @@ export function Login({ onLogin }: { onLogin: (user: any) => void }) {
   const [className, setClassName] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
+  const [rememberMe, setRememberMe] = useState(true);
   const [isValid, setIsValid] = useState<boolean | null>(null);
   const [emailChecked, setEmailChecked] = useState(false);
   const [checkingEmail, setCheckingEmail] = useState(false);
@@ -91,6 +92,11 @@ export function Login({ onLogin }: { onLogin: (user: any) => void }) {
         const user = await loginMutation.mutateAsync({ email: emailLower, password });
         if (user) {
           toast.success(`Bem-vindo, ${user.name}!`);
+          if (rememberMe) {
+            localStorage.setItem("logsim_remember_email", emailLower);
+          } else {
+            localStorage.removeItem("logsim_remember_email");
+          }
           onLogin(user);
         } else {
           toast.error("Email ou senha incorretos. Verifique seus dados.");
@@ -143,6 +149,14 @@ export function Login({ onLogin }: { onLogin: (user: any) => void }) {
       toast.error(error.message || "Erro ao processar solicitação.");
     }
   };
+
+  useEffect(() => {
+    const savedEmail = localStorage.getItem("logsim_remember_email");
+    if (savedEmail) {
+      setEmail(savedEmail);
+      setIsValid(true);
+    }
+  }, []);
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-background relative overflow-hidden">
@@ -425,6 +439,21 @@ export function Login({ onLogin }: { onLogin: (user: any) => void }) {
                       required
                     />
                   </div>
+                </div>
+              )}
+
+              {view !== 'forgot-password' && (
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="rememberMe"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <label htmlFor="rememberMe" className="text-xs text-slate-600 cursor-pointer">
+                    Lembrar meu e-mail
+                  </label>
                 </div>
               )}
 

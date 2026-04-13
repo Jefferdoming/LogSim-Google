@@ -1,6 +1,7 @@
 import React, { useRef, useState } from "react";
 import { Plus, Search, Filter, Download, MoreHorizontal, Edit, Trash2, Eye, Upload, Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -291,10 +292,8 @@ export function ModuleView({ title, description, data, columns, onImport, isLoad
                       ))}
                       <TableCell>
                         <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-slate-900">
-                              <MoreHorizontal className="w-4 h-4" />
-                            </Button>
+                          <DropdownMenuTrigger className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "h-8 w-8 text-slate-400 hover:text-slate-900")}>
+                            <MoreHorizontal className="w-4 h-4" />
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="bg-white border-slate-200">
                             <DropdownMenuItem className="gap-2 focus:bg-slate-50 text-slate-700">

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { 
   Zap, 
   Shield, 
@@ -10,13 +10,44 @@ import {
   LayoutDashboard,
   Package,
   Truck,
-  GraduationCap
+  GraduationCap,
+  Play,
+  Loader2,
+  Mail,
+  School,
+  UserCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { motion } from "motion/react";
+import { Input } from "@/components/ui/input";
+import { motion, AnimatePresence } from "motion/react";
+import { trpc } from "@/lib/trpc";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 export function LandingPage({ onLoginClick }: { onLoginClick: () => void }) {
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const [leadForm, setLeadForm] = useState({ name: "", email: "", school: "", role: "Professor", message: "" });
+  const submitLead = trpc.submitLead.useMutation({
+    onSuccess: () => {
+      toast.success("Solicitação enviada com sucesso! Entraremos em contato em breve.");
+      setLeadForm({ name: "", email: "", school: "", role: "Professor", message: "" });
+    },
+    onError: (err) => toast.error(err.message)
+  });
+
+  const onboardingSlides = [
+    { title: "Dashboard Inteligente", desc: "Visão 360º de toda a operação logística.", img: "https://picsum.photos/seed/dashboard/1200/800" },
+    { title: "Gestão de Estoque", desc: "Controle preciso de entradas e saídas.", img: "https://picsum.photos/seed/inventory/1200/800" },
+    { title: "Roteirização TMS", desc: "Mapas interativos para otimização de entregas.", img: "https://picsum.photos/seed/truck/1200/800" },
+    { title: "Painel do Professor", desc: "Gestão completa de turmas e desempenho.", img: "https://picsum.photos/seed/teacher/1200/800" },
+  ];
+
+  const handleLeadSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    submitLead.mutate(leadForm);
+  };
+
   return (
     <div className="min-h-screen bg-white text-slate-900 selection:bg-blue-100 selection:text-blue-900">
       {/* Navigation */}
@@ -135,6 +166,179 @@ export function LandingPage({ onLoginClick }: { onLoginClick: () => void }) {
                 </CardContent>
               </Card>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Onboarding Video/Slideshow Section */}
+      <section className="py-24 bg-white overflow-hidden">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid lg:grid-cols-2 gap-16 items-center">
+            <div className="space-y-8">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-50 border border-orange-100 text-orange-600 text-xs font-bold uppercase tracking-wider">
+                <Play className="w-3 h-3 fill-orange-600" /> Veja o LogSim Pro em Ação
+              </div>
+              <h2 className="text-4xl font-bold text-slate-900 tracking-tight">Onboarding Interativo para Professores</h2>
+              <p className="text-lg text-slate-600 leading-relaxed">
+                Descubra como o LogSim Pro transforma suas aulas teóricas em experiências práticas imersivas. 
+                Nossa plataforma foi desenhada para facilitar o ensino de conceitos complexos de forma visual e interativa.
+              </p>
+              <div className="space-y-4">
+                {onboardingSlides.map((slide, i) => (
+                  <button 
+                    key={i}
+                    onClick={() => setCurrentSlide(i)}
+                    className={cn(
+                      "w-full text-left p-4 rounded-xl border transition-all flex items-center gap-4",
+                      currentSlide === i 
+                        ? "bg-blue-50 border-blue-200 shadow-sm" 
+                        : "bg-white border-slate-100 hover:border-slate-200"
+                    )}
+                  >
+                    <div className={cn(
+                      "w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm",
+                      currentSlide === i ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-500"
+                    )}>
+                      {i + 1}
+                    </div>
+                    <div>
+                      <p className={cn("font-bold", currentSlide === i ? "text-blue-900" : "text-slate-700")}>{slide.title}</p>
+                      <p className="text-xs text-slate-500">{slide.desc}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="relative aspect-video rounded-3xl overflow-hidden shadow-2xl border border-slate-200 bg-slate-900">
+              <AnimatePresence mode="wait">
+                <motion.img
+                  key={currentSlide}
+                  src={onboardingSlides[currentSlide].img}
+                  initial={{ opacity: 0, scale: 1.1 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  transition={{ duration: 0.5 }}
+                  className="w-full h-full object-cover opacity-80"
+                  referrerPolicy="no-referrer"
+                />
+              </AnimatePresence>
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div className="w-20 h-20 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center border border-white/30">
+                  <Play className="w-8 h-8 text-white fill-white ml-1" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Lead Capture Section */}
+      <section id="demo" className="py-24 bg-slate-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="bg-white rounded-[3rem] shadow-xl border border-slate-200 overflow-hidden grid lg:grid-cols-2">
+            <div className="p-12 lg:p-20 bg-slate-900 text-white space-y-8">
+              <h2 className="text-4xl font-bold tracking-tight">Solicite uma Demonstração Personalizada</h2>
+              <p className="text-slate-400 text-lg leading-relaxed">
+                Nossa equipe de especialistas está pronta para mostrar como o LogSim Pro pode ser implementado na sua instituição. 
+                Preencha o formulário e agende uma conversa.
+              </p>
+              <div className="space-y-6">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400">
+                    <CheckCircle2 className="w-6 h-6" />
+                  </div>
+                  <p className="text-sm font-medium">Apresentação completa dos módulos</p>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400">
+                    <CheckCircle2 className="w-6 h-6" />
+                  </div>
+                  <p className="text-sm font-medium">Plano de implementação pedagógica</p>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400">
+                    <CheckCircle2 className="w-6 h-6" />
+                  </div>
+                  <p className="text-sm font-medium">Acesso temporário para testes</p>
+                </div>
+              </div>
+            </div>
+            <div className="p-12 lg:p-20">
+              <form onSubmit={handleLeadSubmit} className="space-y-6">
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-slate-700">Nome Completo</label>
+                  <div className="relative">
+                    <UserCircle className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <Input 
+                      required
+                      placeholder="Seu nome" 
+                      className="pl-10 bg-slate-50 border-slate-200"
+                      value={leadForm.name}
+                      onChange={e => setLeadForm({...leadForm, name: e.target.value})}
+                    />
+                  </div>
+                </div>
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-slate-700">E-mail Institucional</label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                      <Input 
+                        required
+                        type="email"
+                        placeholder="seu@email.com" 
+                        className="pl-10 bg-slate-50 border-slate-200"
+                        value={leadForm.email}
+                        onChange={e => setLeadForm({...leadForm, email: e.target.value})}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-slate-700">Instituição / Escola</label>
+                    <div className="relative">
+                      <School className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                      <Input 
+                        required
+                        placeholder="Nome da escola" 
+                        className="pl-10 bg-slate-50 border-slate-200"
+                        value={leadForm.school}
+                        onChange={e => setLeadForm({...leadForm, school: e.target.value})}
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-slate-700">Seu Cargo</label>
+                  <select 
+                    className="w-full h-10 px-3 rounded-md border border-slate-200 bg-slate-50 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    value={leadForm.role}
+                    onChange={e => setLeadForm({...leadForm, role: e.target.value})}
+                  >
+                    <option>Professor</option>
+                    <option>Coordenador</option>
+                    <option>Diretor</option>
+                    <option>Outro</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-slate-700">Mensagem (Opcional)</label>
+                  <textarea 
+                    className="w-full min-h-[100px] p-3 rounded-md border border-slate-200 bg-slate-50 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    placeholder="Como podemos ajudar?"
+                    value={leadForm.message}
+                    onChange={e => setLeadForm({...leadForm, message: e.target.value})}
+                  />
+                </div>
+                <Button 
+                  type="submit" 
+                  className="w-full gradient-btn h-12 text-lg font-bold"
+                  disabled={submitLead.isPending}
+                >
+                  {submitLead.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : "Solicitar Demonstração"}
+                </Button>
+              </form>
+            </div>
           </div>
         </div>
       </section>

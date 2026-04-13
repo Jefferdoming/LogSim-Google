@@ -5,7 +5,7 @@
 
 import { useState, useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { httpBatchLink } from "@trpc/client";
+import { httpLink } from "@trpc/client";
 import { trpc } from "./lib/trpc";
 import { Sidebar } from "./components/Sidebar";
 import { Topbar } from "./components/Topbar";
@@ -15,6 +15,8 @@ import { LandingPage } from "./components/LandingPage";
 import { ModuleView } from "./components/ModuleView";
 import { MRPView } from "./components/MRPView";
 import { TeacherDashboard } from "./components/TeacherDashboard";
+import { MissionsView } from "./components/MissionsView";
+import { TMSView } from "./components/TMSView";
 import { Chatbot } from "./components/Chatbot";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -82,8 +84,8 @@ export default function App() {
   const [trpcClient] = useState(() =>
     trpc.createClient({
       links: [
-        httpBatchLink({
-          url: "/trpc",
+        httpLink({
+          url: "/api/trpc",
         }),
       ],
     })
@@ -102,8 +104,11 @@ function AppContent() {
   const [user, setUser] = useState<any>(() => {
     try {
       const savedUser = localStorage.getItem("logsim_user");
-      if (savedUser && savedUser !== "undefined") {
-        return JSON.parse(savedUser);
+      if (savedUser && savedUser !== "undefined" && savedUser !== "null") {
+        const parsed = JSON.parse(savedUser);
+        if (parsed && typeof parsed === 'object' && parsed.email) {
+          return parsed;
+        }
       }
     } catch (e) {
       console.error("Error parsing saved user:", e);
@@ -153,19 +158,19 @@ function AppContent() {
     }
   }, [user]);
 
-  const { data: productsData, isLoading: loadingProducts, refetch: refetchProducts } = trpc.getProducts.useQuery(undefined, {
+  const { data: productsData, isLoading: loadingProducts, refetch: refetchProducts } = trpc.getProducts.useQuery({ userId: user?.id }, {
     enabled: isLoggedIn,
   });
-  const { data: bomData, isLoading: loadingBOM, refetch: refetchBOM } = trpc.getBOM.useQuery(undefined, {
+  const { data: bomData, isLoading: loadingBOM, refetch: refetchBOM } = trpc.getBOM.useQuery({ userId: user?.id }, {
     enabled: isLoggedIn,
   });
-  const { data: suppliersData, isLoading: loadingSuppliers, refetch: refetchSuppliers } = trpc.getSuppliers.useQuery(undefined, {
+  const { data: suppliersData, isLoading: loadingSuppliers, refetch: refetchSuppliers } = trpc.getSuppliers.useQuery({ userId: user?.id }, {
     enabled: isLoggedIn,
   });
-  const { data: customersData, isLoading: loadingCustomers, refetch: refetchCustomers } = trpc.getCustomers.useQuery(undefined, {
+  const { data: customersData, isLoading: loadingCustomers, refetch: refetchCustomers } = trpc.getCustomers.useQuery({ userId: user?.id }, {
     enabled: isLoggedIn,
   });
-  const { data: wmsData, isLoading: loadingWMS, refetch: refetchWMS } = trpc.getWMSInventory.useQuery(undefined, {
+  const { data: wmsData, isLoading: loadingWMS, refetch: refetchWMS } = trpc.getWMSInventory.useQuery({ userId: user?.id }, {
     enabled: isLoggedIn,
   });
 
@@ -192,10 +197,15 @@ function AppContent() {
   };
 
   const handleLogin = (u: any) => {
-    if (!u) return;
+    if (!u || typeof u !== 'object' || !u.email) {
+      console.error("Invalid user data received on login:", u);
+      toast.error("Erro ao processar login. Dados inválidos.");
+      return;
+    }
     setUser(u);
     localStorage.setItem("logsim_user", JSON.stringify(u));
     toast.success(`Bem-vindo de volta, ${u.name}!`);
+    setShowLogin(false);
   };
 
   const handleLogout = () => {
@@ -231,12 +241,12 @@ function AppContent() {
             columns={productsColumns}
             isLoading={loadingProducts}
             onImport={async (data) => {
-              await importProducts.mutateAsync(data);
+              await importProducts.mutateAsync({ userId: user.id, data });
               await refetchProducts();
               await handleAfterAction();
             }}
             onAdd={async (data) => {
-              await createProduct.mutateAsync(data);
+              await createProduct.mutateAsync({ ...data, userId: user.id });
               await refetchProducts();
               await handleAfterAction();
             }}
@@ -251,12 +261,12 @@ function AppContent() {
             columns={bomColumns}
             isLoading={loadingBOM}
             onImport={async (data) => {
-              await importBOM.mutateAsync(data);
+              await importBOM.mutateAsync({ userId: user.id, data });
               await refetchBOM();
               await handleAfterAction();
             }}
             onAdd={async (data) => {
-              await createBOM.mutateAsync(data);
+              await createBOM.mutateAsync({ ...data, userId: user.id });
               await refetchBOM();
               await handleAfterAction();
             }}
@@ -271,12 +281,12 @@ function AppContent() {
             columns={suppliersColumns}
             isLoading={loadingSuppliers}
             onImport={async (data) => {
-              await importSuppliers.mutateAsync(data);
+              await importSuppliers.mutateAsync({ userId: user.id, data });
               await refetchSuppliers();
               await handleAfterAction();
             }}
             onAdd={async (data) => {
-              await createSupplier.mutateAsync(data);
+              await createSupplier.mutateAsync({ ...data, userId: user.id });
               await refetchSuppliers();
               await handleAfterAction();
             }}
@@ -291,12 +301,12 @@ function AppContent() {
             columns={customersColumns}
             isLoading={loadingCustomers}
             onImport={async (data) => {
-              await importCustomers.mutateAsync(data);
+              await importCustomers.mutateAsync({ userId: user.id, data });
               await refetchCustomers();
               await handleAfterAction();
             }}
             onAdd={async (data) => {
-              await createCustomer.mutateAsync(data);
+              await createCustomer.mutateAsync({ ...data, userId: user.id });
               await refetchCustomers();
               await handleAfterAction();
             }}
@@ -313,12 +323,12 @@ function AppContent() {
             columns={wmsColumns}
             isLoading={loadingWMS}
             onImport={async (data) => {
-              await importWMS.mutateAsync(data);
+              await importWMS.mutateAsync({ userId: user.id, data });
               await refetchWMS();
               await handleAfterAction();
             }}
             onAdd={async (data) => {
-              await createWMS.mutateAsync(data);
+              await createWMS.mutateAsync({ ...data, userId: user.id });
               await refetchWMS();
               await handleAfterAction();
             }}
@@ -351,6 +361,10 @@ function AppContent() {
             columns={[{ key: "nfe", label: "NF-e" }, { key: "value", label: "Valor" }, { key: "date", label: "Emissão" }]}
           />
         );
+      case "missions":
+        return <MissionsView user={user} />;
+      case "tms":
+        return <TMSView />;
       case "teacher":
         return <TeacherDashboard user={user} />;
       default:

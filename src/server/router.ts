@@ -1,8 +1,8 @@
 import { initTRPC, TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { db } from "../db";
-import { products, users, missions, activities, allowedStudents, bom, suppliers, customers, wmsInventory, schoolAccessRequests, settings } from "../db/schema";
-import { eq, and, sql } from "drizzle-orm";
+import { db } from "../db/index.ts";
+import { products, users, missions, activities, allowedStudents, bom, suppliers, customers, wmsInventory, schoolAccessRequests, settings, studentMissions, leads } from "../db/schema.ts";
+import { eq, and, sql, desc } from "drizzle-orm";
 
 const t = initTRPC.create();
 
@@ -149,8 +149,9 @@ export const appRouter = router({
       teacherId: z.number()
     }))
     .mutation(async ({ input }) => {
+      const emailLower = input.email.toLowerCase();
       const existing = await db.query.allowedStudents.findFirst({
-        where: eq(allowedStudents.email, input.email)
+        where: eq(allowedStudents.email, emailLower)
       });
 
       if (existing) {
@@ -161,7 +162,7 @@ export const appRouter = router({
       }
 
       const result = await db.insert(allowedStudents).values({
-        email: input.email,
+        email: emailLower,
         ra: input.ra,
         addedBy: input.teacherId
       }).returning();
@@ -176,29 +177,35 @@ export const appRouter = router({
   getUser: publicProcedure
     .input(z.object({ email: z.string() }))
     .query(async ({ input }) => {
+      const emailLower = input.email.toLowerCase();
       const user = await db.query.users.findFirst({
-        where: eq(users.email, input.email),
+        where: eq(users.email, emailLower),
       });
       return user || null;
     }),
 
   // Product procedures
-  getProducts: publicProcedure.query(async () => {
-    return await db.select().from(products);
-  }),
+  getProducts: publicProcedure
+    .input(z.object({ userId: z.number() }))
+    .query(async ({ input }) => {
+      return await db.select().from(products).where(eq(products.userId, input.userId));
+    }),
 
   importProducts: publicProcedure
-    .input(z.array(z.object({
-      sku: z.string(),
-      name: z.string(),
-      category: z.string(),
-      stock: z.number(),
-      price: z.number(),
-    })))
+    .input(z.object({
+      userId: z.number(),
+      data: z.array(z.object({
+        sku: z.string(),
+        name: z.string(),
+        category: z.string(),
+        stock: z.number(),
+        price: z.number(),
+      }))
+    }))
     .mutation(async ({ input }) => {
-      for (const item of input) {
-        await db.insert(products).values(item).onConflictDoUpdate({
-          target: products.sku,
+      for (const item of input.data) {
+        await db.insert(products).values({ ...item, userId: input.userId }).onConflictDoUpdate({
+          target: [products.sku, products.userId],
           set: item
         });
       }
@@ -206,42 +213,52 @@ export const appRouter = router({
     }),
 
   // BOM procedures
-  getBOM: publicProcedure.query(async () => {
-    return await db.select().from(bom);
-  }),
+  getBOM: publicProcedure
+    .input(z.object({ userId: z.number() }))
+    .query(async ({ input }) => {
+      return await db.select().from(bom).where(eq(bom.userId, input.userId));
+    }),
 
   importBOM: publicProcedure
-    .input(z.array(z.object({
-      productSku: z.string(),
-      componentSku: z.string(),
-      quantity: z.number(),
-      unit: z.string(),
-    })))
+    .input(z.object({
+      userId: z.number(),
+      data: z.array(z.object({
+        productSku: z.string(),
+        componentSku: z.string(),
+        quantity: z.number(),
+        unit: z.string(),
+      }))
+    }))
     .mutation(async ({ input }) => {
-      for (const item of input) {
-        await db.insert(bom).values(item);
+      for (const item of input.data) {
+        await db.insert(bom).values({ ...item, userId: input.userId });
       }
       return { success: true };
     }),
 
   // Suppliers procedures
-  getSuppliers: publicProcedure.query(async () => {
-    return await db.select().from(suppliers);
-  }),
+  getSuppliers: publicProcedure
+    .input(z.object({ userId: z.number() }))
+    .query(async ({ input }) => {
+      return await db.select().from(suppliers).where(eq(suppliers.userId, input.userId));
+    }),
 
   importSuppliers: publicProcedure
-    .input(z.array(z.object({
-      name: z.string(),
-      cnpj: z.string(),
-      category: z.string(),
-      contact: z.string().optional(),
-      phone: z.string().optional(),
-      email: z.string().optional(),
-    })))
+    .input(z.object({
+      userId: z.number(),
+      data: z.array(z.object({
+        name: z.string(),
+        cnpj: z.string(),
+        category: z.string(),
+        contact: z.string().optional(),
+        phone: z.string().optional(),
+        email: z.string().optional(),
+      }))
+    }))
     .mutation(async ({ input }) => {
-      for (const item of input) {
-        await db.insert(suppliers).values(item).onConflictDoUpdate({
-          target: suppliers.cnpj,
+      for (const item of input.data) {
+        await db.insert(suppliers).values({ ...item, userId: input.userId }).onConflictDoUpdate({
+          target: [suppliers.cnpj, suppliers.userId],
           set: item
         });
       }
@@ -249,22 +266,27 @@ export const appRouter = router({
     }),
 
   // Customers procedures
-  getCustomers: publicProcedure.query(async () => {
-    return await db.select().from(customers);
-  }),
+  getCustomers: publicProcedure
+    .input(z.object({ userId: z.number() }))
+    .query(async ({ input }) => {
+      return await db.select().from(customers).where(eq(customers.userId, input.userId));
+    }),
 
   importCustomers: publicProcedure
-    .input(z.array(z.object({
-      name: z.string(),
-      document: z.string(),
-      type: z.string(),
-      email: z.string().optional(),
-      phone: z.string().optional(),
-    })))
+    .input(z.object({
+      userId: z.number(),
+      data: z.array(z.object({
+        name: z.string(),
+        document: z.string(),
+        type: z.string(),
+        email: z.string().optional(),
+        phone: z.string().optional(),
+      }))
+    }))
     .mutation(async ({ input }) => {
-      for (const item of input) {
-        await db.insert(customers).values(item).onConflictDoUpdate({
-          target: customers.document,
+      for (const item of input.data) {
+        await db.insert(customers).values({ ...item, userId: input.userId }).onConflictDoUpdate({
+          target: [customers.document, customers.userId],
           set: item
         });
       }
@@ -272,20 +294,26 @@ export const appRouter = router({
     }),
 
   // WMS procedures
-  getWMSInventory: publicProcedure.query(async () => {
-    return await db.select().from(wmsInventory);
-  }),
+  getWMSInventory: publicProcedure
+    .input(z.object({ userId: z.number() }))
+    .query(async ({ input }) => {
+      return await db.select().from(wmsInventory).where(eq(wmsInventory.userId, input.userId));
+    }),
 
   importWMSInventory: publicProcedure
-    .input(z.array(z.object({
-      sku: z.string(),
-      location: z.string(),
-      quantity: z.number(),
-    })))
+    .input(z.object({
+      userId: z.number(),
+      data: z.array(z.object({
+        sku: z.string(),
+        location: z.string(),
+        quantity: z.number(),
+      }))
+    }))
     .mutation(async ({ input }) => {
-      for (const item of input) {
+      for (const item of input.data) {
         await db.insert(wmsInventory).values({
           ...item,
+          userId: input.userId,
           lastUpdated: new Date().toISOString()
         });
       }
@@ -294,6 +322,7 @@ export const appRouter = router({
 
   createProduct: publicProcedure
     .input(z.object({
+      userId: z.number(),
       sku: z.string(),
       name: z.string(),
       category: z.string(),
@@ -307,6 +336,7 @@ export const appRouter = router({
 
   createSupplier: publicProcedure
     .input(z.object({
+      userId: z.number(),
       name: z.string(),
       cnpj: z.string(),
       category: z.string(),
@@ -321,6 +351,7 @@ export const appRouter = router({
 
   createCustomer: publicProcedure
     .input(z.object({
+      userId: z.number(),
       name: z.string(),
       document: z.string(),
       type: z.string(),
@@ -334,6 +365,7 @@ export const appRouter = router({
 
   createBOM: publicProcedure
     .input(z.object({
+      userId: z.number(),
       productSku: z.string(),
       componentSku: z.string(),
       quantity: z.number(),
@@ -346,6 +378,7 @@ export const appRouter = router({
 
   createWMSInventory: publicProcedure
     .input(z.object({
+      userId: z.number(),
       sku: z.string(),
       location: z.string(),
       quantity: z.number(),
@@ -363,18 +396,42 @@ export const appRouter = router({
     return await db.select().from(missions);
   }),
 
+  getStudentMissions: publicProcedure
+    .input(z.object({ studentId: z.number() }))
+    .query(async ({ input }) => {
+      const result = await db.select({
+        id: missions.id,
+        title: missions.title,
+        description: missions.description,
+        reward: missions.reward,
+        difficulty: missions.difficulty,
+        progress: studentMissions.progress,
+        completed: studentMissions.completed,
+      })
+      .from(missions)
+      .leftJoin(studentMissions, and(
+        eq(studentMissions.missionId, missions.id),
+        eq(studentMissions.studentId, input.studentId)
+      ));
+      
+      return result;
+    }),
+
   createMission: publicProcedure
     .input(z.object({
       title: z.string(),
       description: z.string(),
       reward: z.number(),
       difficulty: z.string(),
-      userId: z.number().optional()
+      type: z.string().optional(),
+      targetValue: z.number().optional(),
+      teacherId: z.number().optional()
     }))
     .mutation(async ({ input }) => {
       const result = await db.insert(missions).values({
         ...input,
-        progress: 0
+        type: input.type || "product_count",
+        targetValue: input.targetValue || 1,
       }).returning();
       return result[0];
     }),
@@ -421,9 +478,14 @@ export const appRouter = router({
   }),
 
   // Activity procedures
-  getActivities: publicProcedure.query(async () => {
-    return await db.select().from(activities).limit(10);
-  }),
+  getActivities: publicProcedure
+    .input(z.object({ userId: z.number() }))
+    .query(async ({ input }) => {
+      return await db.select().from(activities)
+        .where(eq(activities.userId, input.userId))
+        .orderBy(desc(activities.timestamp))
+        .limit(10);
+    }),
 
   getStudents: publicProcedure.query(async () => {
     return await db.select().from(users).where(eq(users.role, "student"));
@@ -466,24 +528,45 @@ export const appRouter = router({
       const autoCorrectSetting = await db.query.settings.findFirst({ where: eq(settings.key, "auto_correct_missions") });
       if (autoCorrectSetting?.value === "false") return { success: true };
 
-      const userProducts = await db.select({ count: sql<number>`count(*)` }).from(products);
-      const productCount = Number(userProducts[0].count);
-
-      const userMissions = await db.select().from(missions).where(eq(missions.userId, input.userId));
+      // Get user data for validation
+      const [userProducts] = await db.select({ count: sql<number>`count(*)` }).from(products).where(eq(products.userId, input.userId));
+      const [userSuppliers] = await db.select({ count: sql<number>`count(*)` }).from(suppliers).where(eq(suppliers.userId, input.userId));
+      const [userCustomers] = await db.select({ count: sql<number>`count(*)` }).from(customers).where(eq(customers.userId, input.userId));
       
-      for (const mission of userMissions) {
-        let newProgress = mission.progress;
+      const counts = {
+        product_count: Number(userProducts.count),
+        supplier_count: Number(userSuppliers.count),
+        customer_count: Number(userCustomers.count),
+      };
+
+      const allMissions = await db.select().from(missions);
+      
+      for (const mission of allMissions) {
+        const targetValue = mission.targetValue || 1;
+        const currentCount = counts[mission.type as keyof typeof counts] || 0;
+        const newProgress = Math.min(100, Math.floor((currentCount / targetValue) * 100));
         
-        if (mission.title.toLowerCase().includes("produto") && productCount > 0) {
-          newProgress = Math.min(100, (productCount / 5) * 100);
-        }
-        
-        if (newProgress !== mission.progress) {
-          await db.update(missions)
-            .set({ progress: Math.floor(newProgress) })
-            .where(eq(missions.id, mission.id));
+        const [existingProgress] = await db.select().from(studentMissions).where(and(
+          eq(studentMissions.studentId, input.userId),
+          eq(studentMissions.missionId, mission.id)
+        ));
+
+        if (!existingProgress) {
+          await db.insert(studentMissions).values({
+            studentId: input.userId,
+            missionId: mission.id,
+            progress: newProgress,
+            completed: newProgress === 100
+          });
+        } else if (newProgress > existingProgress.progress) {
+          await db.update(studentMissions)
+            .set({ 
+              progress: newProgress,
+              completed: newProgress === 100
+            })
+            .where(eq(studentMissions.id, existingProgress.id));
             
-          if (newProgress === 100 && mission.progress < 100) {
+          if (newProgress === 100 && !existingProgress.completed) {
             // Reward XP
             const user = await db.query.users.findFirst({ where: eq(users.id, input.userId) });
             if (user) {
@@ -514,6 +597,110 @@ export const appRouter = router({
       });
       return { success: true };
     }),
+
+  // New Procedures
+  getDailyQuote: publicProcedure.query(() => {
+    const quotes = [
+      "Logística é o coração de qualquer negócio de sucesso.",
+      "Eficiência na logística é o diferencial competitivo do século XXI.",
+      "Onde há movimento, há logística. Onde há logística, há progresso.",
+      "Logística: a arte de colocar o produto certo, no lugar certo, na hora certa.",
+      "Grandes batalhas são vencidas pela logística antes mesmo do primeiro tiro.",
+      "Inovação em logística não é apenas tecnologia, é inteligência em movimento.",
+      "Sustentabilidade e logística caminham juntas para um futuro mais verde."
+    ];
+    const dayOfYear = Math.floor((new Date().getTime() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000);
+    return quotes[dayOfYear % quotes.length];
+  }),
+
+  getRanking: publicProcedure.query(async () => {
+    return await db.query.users.findMany({
+      where: eq(users.role, "student"),
+      orderBy: [desc(users.xp)],
+      limit: 10,
+    });
+  }),
+
+  submitLead: publicProcedure
+    .input(z.object({
+      name: z.string(),
+      email: z.string().email(),
+      school: z.string(),
+      role: z.string(),
+      message: z.string().optional()
+    }))
+    .mutation(async ({ input }) => {
+      await db.insert(leads).values({
+        ...input,
+        timestamp: new Date().toISOString()
+      });
+      return { success: true };
+    }),
+
+  updateStudentAllocation: publicProcedure
+    .input(z.object({
+      studentId: z.number(),
+      school: z.string(),
+      class: z.string(),
+      period: z.string()
+    }))
+    .mutation(async ({ input }) => {
+      await db.update(users)
+        .set({
+          school: input.school,
+          class: input.class,
+          period: input.period
+        })
+        .where(eq(users.id, input.studentId));
+      return { success: true };
+    }),
+
+  getMissionTrails: publicProcedure
+    .input(z.object({ userId: z.number() }))
+    .query(async ({ input }) => {
+      const allMissions = await db.query.missions.findMany({
+        orderBy: [sql`${missions.trailId} ASC`, sql`${missions.order} ASC`]
+      });
+
+      const userProgress = await db.query.studentMissions.findMany({
+        where: eq(studentMissions.studentId, input.userId)
+      });
+
+      // Group by trail
+      const trails: Record<string, any[]> = {};
+      allMissions.forEach(m => {
+        const trailId = m.trailId || "Geral";
+        if (!trails[trailId]) trails[trailId] = [];
+        
+        const progress = userProgress.find(p => p.missionId === m.id);
+        trails[trailId].push({
+          ...m,
+          completed: progress?.completed || false,
+          progress: progress?.progress || 0
+        });
+      });
+
+      return trails;
+    }),
+
+  seedBasicTrails: publicProcedure.mutation(async () => {
+    const basicMissions = [
+      { trailId: "Iniciante", order: 1, title: "Primeiros Passos", description: "Cadastre seu primeiro produto no sistema.", reward: 200, difficulty: "Fácil", type: "product_count", targetValue: 1 },
+      { trailId: "Iniciante", order: 2, title: "Expandindo o Mix", description: "Cadastre 5 produtos diferentes.", reward: 300, difficulty: "Fácil", type: "product_count", targetValue: 5 },
+      { trailId: "Operacional", order: 1, title: "Rede de Contatos", description: "Cadastre seu primeiro fornecedor.", reward: 250, difficulty: "Médio", type: "supplier_count", targetValue: 1 },
+      { trailId: "Operacional", order: 2, title: "Gestão de Estoque", description: "Realize 3 movimentações de estoque.", reward: 400, difficulty: "Médio", type: "inventory_move", targetValue: 3 },
+    ];
+
+    for (const m of basicMissions) {
+      const existing = await db.query.missions.findFirst({
+        where: and(eq(missions.title, m.title), eq(missions.trailId, m.trailId))
+      });
+      if (!existing) {
+        await db.insert(missions).values(m);
+      }
+    }
+    return { success: true };
+  }),
 });
 
 export type AppRouter = typeof appRouter;

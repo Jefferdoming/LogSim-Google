@@ -15,7 +15,13 @@ import {
   Download,
   CloudLightning,
   ShieldAlert,
-  Truck
+  Truck,
+  Quote,
+  Lightbulb,
+  BookOpen,
+  Settings as SettingsIcon,
+  UserCheck,
+  BarChart3
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { 
@@ -59,11 +65,15 @@ import { Skeleton } from "@/components/ui/skeleton";
 export function Dashboard({ user }: { user: any }) {
   const [activeEvent, setActiveEvent] = useState<any>(null);
   
-  const { data: productsData, isLoading: loadingProducts } = trpc.getProducts.useQuery();
-  const { data: missionsData, isLoading: loadingMissions } = trpc.getMissions.useQuery();
-  const { data: activitiesData, isLoading: loadingActivities } = trpc.getActivities.useQuery();
+  const { data: productsData, isLoading: loadingProducts } = trpc.getProducts.useQuery({ userId: user?.id });
+  const { data: missionsData, isLoading: loadingMissions } = trpc.getStudentMissions.useQuery({ studentId: user?.id });
+  const { data: activitiesData, isLoading: loadingActivities } = trpc.getActivities.useQuery({ userId: user?.id });
   const { data: settingsData } = trpc.getSettings.useQuery();
+  const { data: quote } = trpc.getDailyQuote.useQuery();
+  const { data: rankingData } = trpc.getRanking.useQuery();
   const createActivity = trpc.createActivity.useMutation();
+
+  const isTeacher = user?.role === 'teacher';
 
   if (loadingProducts || loadingMissions || loadingActivities) {
     return (
@@ -248,6 +258,82 @@ export function Dashboard({ user }: { user: any }) {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Daily Quote */}
+        <Card className="bg-gradient-to-br from-blue-600 to-blue-400 border-none shadow-lg shadow-blue-500/20 text-white overflow-hidden relative">
+          <Quote className="absolute -right-4 -bottom-4 w-32 h-32 text-white/10 rotate-12" />
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-bold uppercase tracking-wider opacity-80 flex items-center gap-2">
+              <Quote className="w-4 h-4" /> Frase do Dia
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-lg font-medium leading-relaxed italic">
+              "{quote || "Logística é a inteligência em movimento."}"
+            </p>
+            <p className="text-xs mt-4 opacity-70 font-medium">— LogSim Pro Insights</p>
+          </CardContent>
+        </Card>
+
+        {/* Teacher Tips or Student Progress */}
+        {isTeacher ? (
+          <Card className="lg:col-span-2 bg-white border-slate-200 shadow-sm">
+            <CardHeader>
+              <CardTitle className="text-lg font-semibold flex items-center gap-2 text-slate-900">
+                <Lightbulb className="w-5 h-5 text-orange-500" />
+                Dicas de Personalização para Professores
+              </CardTitle>
+              <CardDescription>Como usar os dados do LogSim para suas aulas</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 space-y-2">
+                  <div className="flex items-center gap-2 text-blue-600">
+                    <BarChart3 className="w-4 h-4" />
+                    <span className="text-sm font-bold">Análise de Gargalos</span>
+                  </div>
+                  <p className="text-xs text-slate-600">Use o gráfico de desempenho para identificar em qual dia da semana os alunos têm mais dificuldade e crie um estudo de caso sobre isso.</p>
+                </div>
+                <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 space-y-2">
+                  <div className="flex items-center gap-2 text-green-600">
+                    <Target className="w-4 h-4" />
+                    <span className="text-sm font-bold">Missões Temáticas</span>
+                  </div>
+                  <p className="text-xs text-slate-600">Crie missões personalizadas que reflitam problemas reais da sua região (ex: logística de grãos ou e-commerce local).</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card className="lg:col-span-2 bg-white border-slate-200 shadow-sm">
+            <CardHeader>
+              <CardTitle className="text-lg font-semibold flex items-center gap-2 text-slate-900">
+                <UserCheck className="w-5 h-5 text-blue-600" />
+                Seu Progresso Detalhado
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid sm:grid-cols-3 gap-6">
+                <div className="text-center space-y-2">
+                  <p className="text-xs text-slate-500 font-medium uppercase">XP Total</p>
+                  <p className="text-3xl font-black text-blue-600">{user?.xp || 0}</p>
+                </div>
+                <div className="text-center space-y-2">
+                  <p className="text-xs text-slate-500 font-medium uppercase">Missões Concluídas</p>
+                  <p className="text-3xl font-black text-green-600">
+                    {missionsData?.filter((m: any) => m.completed).length || 0}
+                  </p>
+                </div>
+                <div className="text-center space-y-2">
+                  <p className="text-xs text-slate-500 font-medium uppercase">Nível Atual</p>
+                  <p className="text-3xl font-black text-orange-500">{user?.level || 1}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Main Chart */}
         <Card className="lg:col-span-2 bg-white border-slate-200 shadow-sm">
           <CardHeader>
@@ -257,8 +343,8 @@ export function Dashboard({ user }: { user: any }) {
             </CardTitle>
             <CardDescription className="text-slate-500">Análise semanal de eficiência e volume de pedidos</CardDescription>
           </CardHeader>
-          <CardContent className="h-[350px] pt-4">
-            <ResponsiveContainer width="100%" height="100%">
+          <CardContent className="h-[350px] pt-4 w-full">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
               <AreaChart data={chartData}>
                 <defs>
                   <linearGradient id="colorDes" x1="0" y1="0" x2="0" y2="1">
@@ -290,8 +376,8 @@ export function Dashboard({ user }: { user: any }) {
             </CardHeader>
             <CardContent>
               <div className="space-y-6">
-                {ranking.map((user, i) => (
-                  <div key={i} className={`flex items-center justify-between p-3 rounded-xl transition-colors ${user.current ? "bg-blue-50 border border-blue-100" : "hover:bg-slate-50"}`}>
+                {rankingData?.map((u, i) => (
+                  <div key={i} className={`flex items-center justify-between p-3 rounded-xl transition-colors ${u.id === user.id ? "bg-blue-50 border border-blue-100" : "hover:bg-slate-50"}`}>
                     <div className="flex items-center gap-3">
                       <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
                         i === 0 ? "bg-yellow-100 text-yellow-700" : 
@@ -301,16 +387,19 @@ export function Dashboard({ user }: { user: any }) {
                         {i + 1}
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-slate-900">{user.name}</p>
-                        <p className="text-xs text-slate-500">Nível {user.level}</p>
+                        <p className="text-sm font-medium text-slate-900">{u.name}</p>
+                        <p className="text-xs text-slate-500">Nível {u.level}</p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-bold text-blue-600">{user.points.toLocaleString()}</p>
+                      <p className="text-sm font-bold text-blue-600">{u.xp.toLocaleString()}</p>
                       <p className="text-[10px] text-slate-500 uppercase tracking-wider">XP</p>
                     </div>
                   </div>
                 ))}
+                {(!rankingData || rankingData.length === 0) && (
+                  <p className="text-xs text-slate-500 text-center py-4">Nenhum dado de ranking.</p>
+                )}
               </div>
             </CardContent>
           </Card>

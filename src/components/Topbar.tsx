@@ -4,6 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
+  DropdownMenuGroup,
   DropdownMenuItem, 
   DropdownMenuLabel, 
   DropdownMenuSeparator, 
@@ -46,26 +47,26 @@ export function Topbar({ user }: { user: any }) {
         </button>
 
         <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button className="flex items-center gap-3 pl-4 border-l border-slate-200 hover:opacity-80 transition-opacity">
-              <div className="text-right hidden sm:block">
-                <p className="text-sm font-semibold text-slate-900 leading-none">{user?.name || "Usuário"}</p>
-                <p className="text-xs text-slate-500 mt-1">
-                  {user?.role === 'teacher' ? 'Professor' : (user?.course || "Estudante")}
-                </p>
-              </div>
-              <Avatar className="w-9 h-9 border border-blue-500/30">
-                <AvatarImage src={user?.avatar} />
-                <AvatarFallback>{initials}</AvatarFallback>
-              </Avatar>
-            </button>
+          <DropdownMenuTrigger className="flex items-center gap-3 pl-4 border-l border-slate-200 hover:opacity-80 transition-opacity">
+            <div className="text-right hidden sm:block">
+              <p className="text-sm font-semibold text-slate-900 leading-none">{user?.name || "Usuário"}</p>
+              <p className="text-xs text-slate-500 mt-1">
+                {user?.role === 'teacher' ? 'Professor' : (user?.course || "Estudante")}
+              </p>
+            </div>
+            <Avatar className="w-9 h-9 border border-blue-500/30">
+              <AvatarImage src={user?.avatar} />
+              <AvatarFallback>{initials}</AvatarFallback>
+            </Avatar>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56 bg-white border-slate-200">
-            <DropdownMenuLabel className="text-slate-900">Minha Conta</DropdownMenuLabel>
-            <DropdownMenuSeparator className="bg-slate-100" />
-            <DropdownMenuItem className="focus:bg-slate-50 text-slate-700">Perfil</DropdownMenuItem>
-            <DropdownMenuItem className="focus:bg-slate-50 text-slate-700">Configurações</DropdownMenuItem>
-            <DropdownMenuItem className="focus:bg-slate-50 text-slate-700">Suporte</DropdownMenuItem>
+            <DropdownMenuGroup>
+              <DropdownMenuLabel className="text-slate-900">Minha Conta</DropdownMenuLabel>
+              <DropdownMenuSeparator className="bg-slate-100" />
+              <DropdownMenuItem className="focus:bg-slate-50 text-slate-700">Perfil</DropdownMenuItem>
+              <DropdownMenuItem className="focus:bg-slate-50 text-slate-700">Configurações</DropdownMenuItem>
+              <DropdownMenuItem className="focus:bg-slate-50 text-slate-700">Suporte</DropdownMenuItem>
+            </DropdownMenuGroup>
             <DropdownMenuSeparator className="bg-slate-100" />
             <DropdownMenuItem className="text-red-600 focus:bg-red-50">Sair</DropdownMenuItem>
           </DropdownMenuContent>

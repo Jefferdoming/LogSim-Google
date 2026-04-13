@@ -10,13 +10,16 @@ import {
   FileText, 
   GraduationCap, 
   Settings,
-  LogOut
+  LogOut,
+  Target
 } from "lucide-react";
 import { Logo } from "./Logo";
 import { cn } from "@/lib/utils";
 import { motion } from "motion/react";
 import { useState } from "react";
 import { SchoolAccessModal } from "./SchoolAccessModal";
+import { OnboardingVideo } from "./OnboardingVideo";
+import { Play } from "lucide-react";
 
 const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", id: "dashboard" },
@@ -27,6 +30,7 @@ const menuItems = [
   { icon: Settings, label: "MRP", id: "mrp" },
   { icon: Warehouse, label: "WMS", id: "wms" },
   { icon: Truck, label: "TMS", id: "tms" },
+  { icon: Target, label: "Missões", id: "missions" },
   { icon: Globe, label: "SISCOMEX", id: "siscomex" },
   { icon: FileText, label: "Doc. Fiscais", id: "fiscal" },
   { icon: GraduationCap, label: "Painel Professor", id: "teacher", special: true },
@@ -44,6 +48,7 @@ export function Sidebar({
   user: any
 }) {
   const [isAccessModalOpen, setIsAccessModalOpen] = useState(false);
+  const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
 
   return (
     <>
@@ -95,6 +100,16 @@ export function Sidebar({
         </nav>
 
         <div className="p-4 mt-auto border-t border-slate-100 space-y-4">
+          <button 
+            onClick={() => setIsOnboardingOpen(true)}
+            className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl bg-blue-600 text-white hover:bg-blue-700 transition-all duration-200 shadow-sm group"
+          >
+            <div className="p-1.5 rounded-lg bg-white/20 group-hover:scale-110 transition-transform">
+              <Play className="w-3 h-3 fill-current" />
+            </div>
+            <span className="text-[10px] font-bold uppercase tracking-wider">Ver em Ação</span>
+          </button>
+
           <div className="px-4 py-3 rounded-xl bg-gradient-to-br from-blue-50 to-orange-50 border border-blue-100/50 shadow-sm">
             <p className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">Versão Educacional</p>
             <p className="text-xs font-semibold text-slate-900 mt-1">Licença Ativa</p>
@@ -122,6 +137,7 @@ export function Sidebar({
       </aside>
 
       <SchoolAccessModal isOpen={isAccessModalOpen} onClose={() => setIsAccessModalOpen(false)} />
+      <OnboardingVideo isOpen={isOnboardingOpen} onClose={() => setIsOnboardingOpen(false)} />
     </>
   );
 }

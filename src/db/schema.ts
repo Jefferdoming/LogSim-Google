@@ -8,6 +8,7 @@ export const users = sqliteTable("users", {
   course: text("course"), // Optional for teachers
   school: text("school"),
   class: text("class"),
+  period: text("period"), // morning, afternoon, night
   phone: text("phone"),
   address: text("address"),
   password: text("password").notNull(),
@@ -26,12 +27,13 @@ export const allowedStudents = sqliteTable("allowed_students", {
 
 export const products = sqliteTable("products", {
   id: integer("id").primaryKey({ autoIncrement: true }),
-  sku: text("sku").notNull().unique(),
+  sku: text("sku").notNull(),
   name: text("name").notNull(),
   category: text("category").notNull(),
   stock: integer("stock").notNull().default(0),
   price: real("price").notNull(),
   status: text("status").notNull().default("Ativo"),
+  userId: integer("user_id").references(() => users.id),
 });
 
 export const bom = sqliteTable("bom", {
@@ -40,25 +42,28 @@ export const bom = sqliteTable("bom", {
   componentSku: text("component_sku").notNull(),
   quantity: real("quantity").notNull(),
   unit: text("unit").notNull(),
+  userId: integer("user_id").references(() => users.id),
 });
 
 export const suppliers = sqliteTable("suppliers", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull(),
-  cnpj: text("cnpj").notNull().unique(),
+  cnpj: text("cnpj").notNull(),
   category: text("category").notNull(),
   contact: text("contact"),
   phone: text("phone"),
   email: text("email"),
+  userId: integer("user_id").references(() => users.id),
 });
 
 export const customers = sqliteTable("customers", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull(),
-  document: text("document").notNull().unique(),
+  document: text("document").notNull(),
   type: text("type").notNull(), // PF, PJ
   email: text("email"),
   phone: text("phone"),
+  userId: integer("user_id").references(() => users.id),
 });
 
 export const wmsInventory = sqliteTable("wms_inventory", {
@@ -67,6 +72,7 @@ export const wmsInventory = sqliteTable("wms_inventory", {
   location: text("location").notNull(),
   quantity: integer("quantity").notNull(),
   lastUpdated: text("last_updated").notNull(),
+  userId: integer("user_id").references(() => users.id),
 });
 
 export const missions = sqliteTable("missions", {
@@ -75,8 +81,19 @@ export const missions = sqliteTable("missions", {
   description: text("description").notNull(),
   reward: integer("reward").notNull(),
   difficulty: text("difficulty").notNull(),
+  type: text("type").notNull().default("product_count"), // product_count, supplier_count, etc.
+  targetValue: integer("target_value").notNull().default(1),
+  trailId: text("trail_id"), // Trail identifier
+  order: integer("order").notNull().default(0), // Order within the trail
+  teacherId: integer("teacher_id").references(() => users.id),
+});
+
+export const studentMissions = sqliteTable("student_missions", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  studentId: integer("student_id").references(() => users.id).notNull(),
+  missionId: integer("mission_id").references(() => missions.id).notNull(),
   progress: integer("progress").notNull().default(0),
-  userId: integer("user_id").references(() => users.id),
+  completed: integer("completed", { mode: "boolean" }).notNull().default(false),
 });
 
 export const schoolAccessRequests = sqliteTable("school_access_requests", {
@@ -102,4 +119,14 @@ export const activities = sqliteTable("activities", {
   description: text("description").notNull(),
   timestamp: text("timestamp").notNull(),
   userId: integer("user_id").references(() => users.id),
+});
+
+export const leads = sqliteTable("leads", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  name: text("name").notNull(),
+  email: text("email").notNull(),
+  school: text("school").notNull(),
+  role: text("role").notNull(),
+  message: text("message"),
+  timestamp: text("timestamp").notNull(),
 });

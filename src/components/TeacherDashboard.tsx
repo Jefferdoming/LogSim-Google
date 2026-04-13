@@ -19,11 +19,15 @@ import {
   Zap,
   AlertTriangle,
   CheckCircle2,
-  LayoutDashboard
+  LayoutDashboard,
+  Play,
+  Settings as SettingsIcon,
+  Loader2
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -53,6 +57,7 @@ import "jspdf-autotable";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { motion } from "motion/react";
+import { OnboardingVideo } from "./OnboardingVideo";
 
 declare module "jspdf" {
   interface jsPDF {
@@ -64,12 +69,29 @@ export function TeacherDashboard({ user }: { user: any }) {
   const [activeTab, setActiveTab] = useState<"overview" | "students" | "missions" | "settings">("overview");
   const [searchTerm, setSearchTerm] = useState("");
   const [showMissionForm, setShowMissionForm] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [editingStudent, setEditingStudent] = useState<any>(null);
+  const [allocationForm, setAllocationForm] = useState({ school: "", class: "", period: "Manhã" });
 
-  const { data: students, isLoading: loadingStudents } = trpc.getStudents.useQuery();
+  const { data: students, refetch: refetchStudents, isLoading: loadingStudents } = trpc.getStudents.useQuery();
   const { data: missions, refetch: refetchMissions, isLoading: loadingMissions } = trpc.getMissions.useQuery();
   const { data: settingsData, refetch: refetchSettings } = trpc.getSettings.useQuery();
   
-  const preRegisterMutation = trpc.preRegisterStudent.useMutation();
+  const preRegisterMutation = trpc.preRegisterStudent.useMutation({
+    onSuccess: () => {
+      toast.success("Aluno pré-cadastrado com sucesso!");
+      refetchStudents();
+    }
+  });
+
+  const updateAllocation = trpc.updateStudentAllocation.useMutation({
+    onSuccess: () => {
+      toast.success("Alocação atualizada com sucesso!");
+      setEditingStudent(null);
+      refetchStudents();
+    },
+    onError: (err) => toast.error(err.message)
+  });
   const createMissionMutation = trpc.createMission.useMutation();
   const deleteMissionMutation = trpc.deleteMission.useMutation();
   const updateSettingMutation = trpc.updateSetting.useMutation();
@@ -175,6 +197,9 @@ export function TeacherDashboard({ user }: { user: any }) {
         description: formData.get("description") as string,
         reward: parseInt(formData.get("reward") as string),
         difficulty: formData.get("difficulty") as string,
+        type: formData.get("type") as string,
+        targetValue: parseInt(formData.get("targetValue") as string),
+        teacherId: user.id,
       });
       toast.success("Missão criada com sucesso!");
       setShowMissionForm(false);
@@ -203,6 +228,13 @@ export function TeacherDashboard({ user }: { user: any }) {
         </div>
         <div className="flex gap-3">
           <Button 
+            onClick={() => setShowOnboarding(true)}
+            variant="outline" 
+            className="bg-blue-600 text-white border-blue-600 hover:bg-blue-700 hover:border-blue-700 shadow-md"
+          >
+            <Play className="w-4 h-4 mr-2 fill-current" /> Veja o LogSim Pro em Ação
+          </Button>
+          <Button 
             onClick={exportToPDF}
             variant="outline" 
             className="bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
@@ -211,6 +243,8 @@ export function TeacherDashboard({ user }: { user: any }) {
           </Button>
         </div>
       </div>
+
+      <OnboardingVideo isOpen={showOnboarding} onClose={() => setShowOnboarding(false)} />
 
       {/* Custom Tabs */}
       <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl w-fit">
@@ -283,8 +317,8 @@ export function TeacherDashboard({ user }: { user: any }) {
                 </CardTitle>
                 <CardDescription className="text-slate-500">Progresso geral da turma por faixa de nível</CardDescription>
               </CardHeader>
-              <CardContent className="h-[350px] pt-4">
-                <ResponsiveContainer width="100%" height="100%">
+              <CardContent className="h-[350px] pt-4 w-full">
+                <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                   <BarChart data={levelDistribution}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
                     <XAxis dataKey="name" stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
@@ -372,6 +406,7 @@ export function TeacherDashboard({ user }: { user: any }) {
                       <TableHead className="text-slate-600">Nível</TableHead>
                       <TableHead className="text-slate-600">XP Total</TableHead>
                       <TableHead className="text-slate-600">Turma</TableHead>
+                      <TableHead className="text-slate-600">Período</TableHead>
                       <TableHead className="text-slate-600 text-right">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -401,9 +436,24 @@ export function TeacherDashboard({ user }: { user: any }) {
                         <TableCell className="text-sm text-slate-600">
                           {student.class || "N/A"}
                         </TableCell>
+                        <TableCell className="text-sm text-slate-600">
+                          {student.period || "-"}
+                        </TableCell>
                         <TableCell className="text-right">
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-slate-900">
-                            <FileText className="w-4 h-4" />
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                            onClick={() => {
+                              setEditingStudent(student);
+                              setAllocationForm({
+                                school: student.school || "",
+                                class: student.class || "",
+                                period: student.period || "Manhã"
+                              });
+                            }}
+                          >
+                            <SettingsIcon className="w-4 h-4 mr-1" /> Alocar
                           </Button>
                         </TableCell>
                       </TableRow>
@@ -424,7 +474,7 @@ export function TeacherDashboard({ user }: { user: any }) {
                       onSubmit={async (e) => {
                         e.preventDefault();
                         const formData = new FormData(e.currentTarget);
-                        const email = formData.get("email") as string;
+                        const email = (formData.get("email") as string).toLowerCase();
                         const ra = formData.get("ra") as string;
                         
                         if (!email.includes("@al.educacao.")) {
@@ -512,6 +562,21 @@ export function TeacherDashboard({ user }: { user: any }) {
                     </div>
                   </div>
                   <div className="space-y-4">
+                    <div className="space-y-1.5">
+                      <Label className="text-sm font-semibold">Tipo de Validação</Label>
+                      <select 
+                        name="type" 
+                        className="w-full h-10 px-3 rounded-lg border border-slate-200 text-sm focus:ring-2 focus:ring-blue-500/20 outline-none bg-white"
+                      >
+                        <option value="product_count">Cadastro de Produtos</option>
+                        <option value="supplier_count">Cadastro de Fornecedores</option>
+                        <option value="customer_count">Cadastro de Clientes</option>
+                      </select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-sm font-semibold">Meta (Quantidade)</Label>
+                      <Input name="targetValue" type="number" placeholder="Ex: 5" defaultValue="5" required />
+                    </div>
                     <div className="space-y-1.5">
                       <Label className="text-sm font-semibold">Recompensa (XP)</Label>
                       <Input name="reward" type="number" placeholder="Ex: 500" required />
@@ -693,14 +758,64 @@ export function TeacherDashboard({ user }: { user: any }) {
           </div>
         </div>
       )}
+      {/* Allocation Modal */}
+      {editingStudent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+          <Card className="w-full max-w-md bg-white shadow-2xl animate-in zoom-in-95 duration-200">
+            <CardHeader>
+              <CardTitle className="text-xl font-bold text-slate-900">Alocar Estudante</CardTitle>
+              <CardDescription>Defina a escola, turma e período para {editingStudent.name}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label>Escola / Unidade</Label>
+                <Input 
+                  value={allocationForm.school}
+                  onChange={e => setAllocationForm({...allocationForm, school: e.target.value})}
+                  placeholder="Ex: ETEC de São Paulo"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Turma</Label>
+                  <Input 
+                    value={allocationForm.class}
+                    onChange={e => setAllocationForm({...allocationForm, class: e.target.value})}
+                    placeholder="Ex: 3º Log A"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Período</Label>
+                  <select 
+                    className="w-full h-10 px-3 rounded-md border border-slate-200 bg-slate-50 text-sm"
+                    value={allocationForm.period}
+                    onChange={e => setAllocationForm({...allocationForm, period: e.target.value})}
+                  >
+                    <option>Manhã</option>
+                    <option>Tarde</option>
+                    <option>Noite</option>
+                    <option>Integral</option>
+                  </select>
+                </div>
+              </div>
+              <div className="flex justify-end gap-3 pt-4">
+                <Button variant="outline" onClick={() => setEditingStudent(null)}>Cancelar</Button>
+                <Button 
+                  className="gradient-btn"
+                  onClick={() => updateAllocation.mutate({
+                    studentId: editingStudent.id,
+                    ...allocationForm
+                  })}
+                  disabled={updateAllocation.isPending}
+                >
+                  {updateAllocation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Salvar Alocação"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }
 
-function Label({ children, htmlFor, className }: { children: ReactNode, htmlFor?: string, className?: string }) {
-  return (
-    <label htmlFor={htmlFor} className={`text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 ${className}`}>
-      {children}
-    </label>
-  );
-}
