@@ -358,9 +358,22 @@ export function LandingPage({ onLoginClick }: { onLoginClick: () => void }) {
               <Button onClick={onLoginClick} className="gradient-btn h-14 px-10 text-lg font-bold shadow-2xl shadow-blue-500/20">
                 Acessar Sistema
               </Button>
-              <Button variant="outline" className="h-14 px-10 text-lg font-bold border-orange-500 text-orange-500 hover:bg-orange-500 hover:text-white transition-all">
-                Falar com Consultor
-              </Button>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Button 
+                  variant="outline" 
+                  className="h-14 px-8 text-lg font-bold border-orange-500 text-orange-500 hover:bg-orange-500 hover:text-white transition-all"
+                  onClick={() => window.open("mailto:jeju2304@gmail.com", "_blank")}
+                >
+                  E-mail do Consultor
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="h-14 px-8 text-lg font-bold border-green-500 text-green-600 hover:bg-green-600 hover:text-white transition-all"
+                  onClick={() => window.open("https://wa.me/5511999999999", "_blank")}
+                >
+                  WhatsApp
+                </Button>
+              </div>
             </div>
           </div>
         </div>
